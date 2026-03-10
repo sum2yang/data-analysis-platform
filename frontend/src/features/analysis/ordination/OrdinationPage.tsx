@@ -2,81 +2,15 @@ import { useState } from 'react'
 import { Select, InputNumber, message, Row, Col, Tabs } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { AnalysisForm } from '@/components/AnalysisForm'
-import { ResultCard } from '@/components/ResultCard'
-import { ResultTable } from '@/components/ResultTable'
+import { AnalysisResults } from '@/components/AnalysisResults'
 import { ColumnSelector } from '@/components/ColumnSelector'
-import { submitAnalysis, fetchAnalysisResult } from '../api'
-import { usePolling } from '@/hooks/usePolling'
+import { submitAnalysis } from '../api'
+import { useAnalysis, useAnalysisPolling } from '@/hooks/useAnalysis'
 import { useDatasetColumns } from '@/hooks/useDatasetColumns'
-import { POLL_INTERVAL } from '@/config/constants'
-import type { AnalysisRunDetail } from '../types'
 import type { ColumnInfo } from '@/api/types'
 
-function AnalysisResults({ result }: { result: AnalysisRunDetail | null }) {
-  const tables = result?.result?.tables
-    ? Object.entries(result.result.tables).map(([title, data]) => ({
-        title,
-        columns: data.length > 0 ? Object.keys(data[0] as Record<string, unknown>) : [],
-        data: data as Record<string, unknown>[],
-      }))
-    : []
-
-  return (
-    <>
-      {tables.map((table) => (
-        <ResultCard key={table.title} title={table.title}>
-          <ResultTable result={table} />
-        </ResultCard>
-      ))}
-      {result?.result?.warnings && result.result.warnings.length > 0 && (
-        <ResultCard title="警告">
-          <ul>
-            {result.result.warnings.map((w, i) => (
-              <li key={i} style={{ color: '#faad14' }}>{w}</li>
-            ))}
-          </ul>
-        </ResultCard>
-      )}
-    </>
-  )
-}
-
-function useOrdinationSubmit(datasetId: string | undefined, analysisType: string) {
-  const [runId, setRunId] = useState<string | null>(null)
-  const [result, setResult] = useState<AnalysisRunDetail | null>(null)
-  const [polling, setPolling] = useState(false)
-
-  const submitMutation = useMutation({
-    mutationFn: (params: Record<string, unknown>) =>
-      submitAnalysis(datasetId!, analysisType, params),
-    onSuccess: (data) => {
-      setRunId(data.run_id)
-      setPolling(true)
-      message.info('排序分析任务已提交')
-    },
-    onError: () => message.error('提交失败'),
-  })
-
-  usePolling(
-    async () => {
-      if (!runId) return
-      const detail = await fetchAnalysisResult(runId)
-      if (detail.status === 'completed' || detail.status === 'failed') {
-        setPolling(false)
-        setResult(detail)
-        if (detail.status === 'completed') message.success('分析完成')
-        else message.error(detail.error_message ?? '分析失败')
-      }
-    },
-    POLL_INTERVAL,
-    polling,
-  )
-
-  return { submitMutation, result, polling }
-}
-
 function PcaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const { submitMutation, result, polling } = useOrdinationSubmit(datasetId, 'pca')
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'pca')
 
   const fields = [
     {
@@ -133,7 +67,7 @@ function PcaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: str
 }
 
 function PcoaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const { submitMutation, result, polling } = useOrdinationSubmit(datasetId, 'pcoa')
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'pcoa')
 
   const fields = [
     {
@@ -183,7 +117,7 @@ function PcoaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: st
 }
 
 function NmdsTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const { submitMutation, result, polling } = useOrdinationSubmit(datasetId, 'nmds')
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'nmds')
 
   const fields = [
     {
@@ -238,7 +172,21 @@ function NmdsTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: st
 }
 
 function RdaCcaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const { submitMutation, result, polling } = useOrdinationSubmit(datasetId, 'rda_cca')
+  const [selectedMethod, setSelectedMethod] = useState<string>('rda')
+  const { setRunId, result, polling, setPolling } = useAnalysisPolling()
+
+  const submitMutation = useMutation({
+    mutationFn: (params: Record<string, unknown>) => {
+      const { method: _method, ...cleanParams } = params
+      return submitAnalysis(datasetId!, selectedMethod, cleanParams)
+    },
+    onSuccess: (data) => {
+      setRunId(data.run_id)
+      setPolling(true)
+      message.info('排序分析任务已提交')
+    },
+    onError: () => message.error('提交失败'),
+  })
 
   const fields = [
     {
@@ -265,7 +213,8 @@ function RdaCcaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: 
       label: '排序方法',
       component: (
         <Select
-          defaultValue="rda"
+          value={selectedMethod}
+          onChange={setSelectedMethod}
           options={[
             { label: 'RDA (冗余分析)', value: 'rda' },
             { label: 'CCA (典范对应分析)', value: 'cca' },

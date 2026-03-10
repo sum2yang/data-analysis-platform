@@ -1,34 +1,43 @@
-import { Table } from 'antd'
+import { Table, Tooltip } from 'antd'
 import type { TableResult } from '@/api/types'
 import { useMemo } from 'react'
+import { COLUMN_LABEL_MAP } from '@/config/constants'
 
 interface ResultTableProps {
   result: TableResult
   highlightPValue?: boolean
 }
 
-function formatPValue(val: unknown): { text: string; color?: string } {
-  if (typeof val !== 'number') return { text: String(val ?? '') }
-  if (val < 0.001) return { text: '< 0.001', color: '#ff4d4f' }
-  if (val < 0.01) return { text: val.toFixed(3), color: '#ff7a45' }
-  if (val < 0.05) return { text: val.toFixed(3), color: '#ffa940' }
-  return { text: val.toFixed(3) }
+function formatPValue(val: unknown): { text: string; style: React.CSSProperties } {
+  if (typeof val !== 'number') return { text: String(val ?? ''), style: {} }
+  if (val < 0.001) return { text: '< 0.001 ***', style: { color: '#f5222d', fontWeight: 'bold' } }
+  if (val < 0.01) return { text: `${val.toFixed(4)} **`, style: { color: '#f5222d', fontWeight: 'bold' } }
+  if (val < 0.05) return { text: `${val.toFixed(4)} *`, style: { color: '#fa8c16' } }
+  return { text: val.toFixed(4), style: {} }
+}
+
+function isPColumn(col: string): boolean {
+  return /p[_\s-]?val/i.test(col) || col.toLowerCase() === 'p'
 }
 
 export function ResultTable({ result, highlightPValue = true }: ResultTableProps) {
   const pColumns = useMemo(
-    () => new Set(result.columns.filter((c) => /p[_\s-]?val/i.test(c) || c.toLowerCase() === 'p')),
+    () => new Set(result.columns.filter(isPColumn)),
     [result.columns],
   )
 
   const columns = result.columns.map((col) => ({
-    title: col,
+    title: (
+      <Tooltip title={col} placement="top">
+        <span>{COLUMN_LABEL_MAP[col] || col}</span>
+      </Tooltip>
+    ),
     dataIndex: col,
     key: col,
     render: (value: unknown) => {
       if (highlightPValue && pColumns.has(col)) {
-        const { text, color } = formatPValue(value)
-        return <span style={{ color, fontWeight: color ? 600 : undefined }}>{text}</span>
+        const { text, style } = formatPValue(value)
+        return <span style={style}>{text}</span>
       }
       if (typeof value === 'number') {
         return (

@@ -1,21 +1,42 @@
 import { Card, Button, Space, Select, message } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { exportChart, exportTable } from './api'
+import { exportChart, exportTable, downloadExport } from './api'
+import { apiClient } from '@/api/client'
 
 interface ExportCenterProps {
   runId: string | null
   tableNames: string[]
 }
 
-function downloadBlob(blob: Blob, filename: string) {
+function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Poll export status until ready, then download the file.
+ */
+async function pollAndDownload(exportId: string, filename: string): Promise<void> {
+  const maxAttempts = 30
+  for (let i = 0; i < maxAttempts; i++) {
+    const res = await apiClient.get<{ status: string }>(`/exports/${exportId}`)
+    if (res.data.status === 'ready') {
+      const blob = await downloadExport(exportId)
+      triggerDownload(blob, filename)
+      return
+    }
+    if (res.data.status === 'failed') {
+      throw new Error('Export failed on server')
+    }
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+  throw new Error('Export timed out')
 }
 
 export function ExportCenter({ runId, tableNames }: ExportCenterProps) {
@@ -30,24 +51,21 @@ export function ExportCenter({ runId, tableNames }: ExportCenterProps) {
   }, [tableNames, selectedTable])
 
   const chartExportMutation = useMutation({
-    mutationFn: () =>
-      exportChart({ run_id: runId!, format: chartFormat, dpi: 300 }),
-    onSuccess: (blob) => {
-      downloadBlob(blob, `chart.${chartFormat}`)
-      message.success('图表导出成功')
+    mutationFn: async () => {
+      const resp = await exportChart({ run_id: runId!, format: chartFormat })
+      await pollAndDownload(resp.id, `chart.${chartFormat}`)
     },
+    onSuccess: () => message.success('图表导出成功'),
     onError: () => message.error('图表导出失败'),
   })
 
   const tableExportMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!runId || !selectedTable) throw new Error('Missing runId or table')
-      return exportTable(runId, selectedTable, tableFormat)
+      const resp = await exportTable(runId, selectedTable, tableFormat)
+      await pollAndDownload(resp.id, `${selectedTable}.${tableFormat}`)
     },
-    onSuccess: (blob) => {
-      downloadBlob(blob, `${selectedTable}.${tableFormat}`)
-      message.success('表格导出成功')
-    },
+    onSuccess: () => message.success('表格导出成功'),
     onError: () => message.error('表格导出失败'),
   })
 

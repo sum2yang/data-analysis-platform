@@ -9,6 +9,7 @@ from app.repositories.analysis_runs import AnalysisRunRepository
 from app.services.analysis_request_builder import AnalysisRequestBuilder
 from app.services.r_plumber_client import RPlumberClient
 from app.services.result_contract_service import ResultContractService
+from app.services.chart_contract_service import ChartContractService
 
 __all__ = ["run_analysis_task"]
 
@@ -63,6 +64,10 @@ def run_analysis_task(
         raw_result = client.call(endpoint, bundle)
 
         result = ResultContractService.validate_envelope(raw_result)
+
+        charts = ChartContractService.auto_generate(analysis_type, result)
+        if charts:
+            result["chart_contracts"] = [c.model_dump() for c in charts]
 
         repo.update_status(run_id, "succeeded", result=result)
         return result

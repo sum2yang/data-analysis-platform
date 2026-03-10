@@ -2,97 +2,15 @@ import { useState } from 'react'
 import { Tabs, Select, InputNumber, Switch, message, Row, Col } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { AnalysisForm } from '@/components/AnalysisForm'
-import { ResultCard } from '@/components/ResultCard'
-import { ResultTable } from '@/components/ResultTable'
+import { AnalysisResults } from '@/components/AnalysisResults'
 import { ColumnSelector } from '@/components/ColumnSelector'
-import { submitAnalysis, fetchAnalysisResult } from '../api'
-import { usePolling } from '@/hooks/usePolling'
+import { submitAnalysis } from '../api'
+import { useAnalysis, useAnalysisPolling } from '@/hooks/useAnalysis'
 import { useDatasetColumns } from '@/hooks/useDatasetColumns'
-import { POLL_INTERVAL } from '@/config/constants'
-import type { AnalysisRunDetail } from '../types'
 import type { ColumnInfo } from '@/api/types'
 
-function useAnalysisSubmit(
-  datasetId: string | undefined,
-  analysisType: string,
-  setRunId: (id: string) => void,
-  setPolling: (v: boolean) => void,
-) {
-  return useMutation({
-    mutationFn: (params: Record<string, unknown>) =>
-      submitAnalysis(datasetId!, analysisType, params),
-    onSuccess: (data) => {
-      setRunId(data.run_id)
-      setPolling(true)
-      message.info('分析任务已提交')
-    },
-    onError: () => {
-      message.error('提交失败')
-    },
-  })
-}
-
-function useAnalysisPolling(
-  runId: string | null,
-  polling: boolean,
-  setPolling: (v: boolean) => void,
-  setResult: (r: AnalysisRunDetail) => void,
-) {
-  usePolling(
-    async () => {
-      if (!runId) return
-      const detail = await fetchAnalysisResult(runId)
-      if (detail.status === 'completed' || detail.status === 'failed') {
-        setPolling(false)
-        setResult(detail)
-        if (detail.status === 'completed') {
-          message.success('分析完成')
-        } else {
-          message.error(detail.error_message ?? '分析失败')
-        }
-      }
-    },
-    POLL_INTERVAL,
-    polling,
-  )
-}
-
-function AnalysisResults({ result }: { result: AnalysisRunDetail | null }) {
-  const tables = result?.result?.tables
-    ? Object.entries(result.result.tables).map(([title, data]) => ({
-        title,
-        columns: data.length > 0 ? Object.keys(data[0] as Record<string, unknown>) : [],
-        data: data as Record<string, unknown>[],
-      }))
-    : []
-
-  return (
-    <>
-      {tables.map((table) => (
-        <ResultCard key={table.title} title={table.title}>
-          <ResultTable result={table} highlightPValue />
-        </ResultCard>
-      ))}
-      {result?.result?.warnings && result.result.warnings.length > 0 && (
-        <ResultCard title="警告">
-          <ul>
-            {result.result.warnings.map((w, i) => (
-              <li key={i} style={{ color: '#faad14' }}>{w}</li>
-            ))}
-          </ul>
-        </ResultCard>
-      )}
-    </>
-  )
-}
-
 function TTestTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const [runId, setRunId] = useState<string | null>(null)
-  const [result, setResult] = useState<AnalysisRunDetail | null>(null)
-  const [polling, setPolling] = useState(false)
-
-  const submitMutation = useAnalysisSubmit(datasetId, 't_test', setRunId, setPolling)
-  useAnalysisPolling(runId, polling, setPolling, setResult)
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 't_test')
 
   const fields = [
     {
@@ -175,12 +93,7 @@ function TTestTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: s
 }
 
 function AnovaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const [runId, setRunId] = useState<string | null>(null)
-  const [result, setResult] = useState<AnalysisRunDetail | null>(null)
-  const [polling, setPolling] = useState(false)
-
-  const submitMutation = useAnalysisSubmit(datasetId, 'anova', setRunId, setPolling)
-  useAnalysisPolling(runId, polling, setPolling, setResult)
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'anova_one_way')
 
   const fields = [
     {
@@ -196,7 +109,7 @@ function AnovaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: s
       component: <ColumnSelector columns={columns} filterType="categorical" multiple={false} placeholder="选择分组列" />,
     },
     {
-      name: 'posthoc',
+      name: 'posthoc_method',
       label: '事后检验',
       component: (
         <Select
@@ -230,13 +143,138 @@ function AnovaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: s
   )
 }
 
-function NonParametricTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
-  const [runId, setRunId] = useState<string | null>(null)
-  const [result, setResult] = useState<AnalysisRunDetail | null>(null)
-  const [polling, setPolling] = useState(false)
+function WelchAnovaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'anova_welch')
 
-  const submitMutation = useAnalysisSubmit(datasetId, 'nonparametric', setRunId, setPolling)
-  useAnalysisPolling(runId, polling, setPolling, setResult)
+  const fields = [
+    {
+      name: 'response_column',
+      label: '响应变量',
+      required: true,
+      component: <ColumnSelector columns={columns} filterType="numeric" multiple={false} placeholder="选择数值列" />,
+    },
+    {
+      name: 'group_column',
+      label: '分组变量',
+      required: true,
+      component: <ColumnSelector columns={columns} filterType="categorical" multiple={false} placeholder="选择分组列" />,
+    },
+    {
+      name: 'posthoc_method',
+      label: '事后检验',
+      component: (
+        <Select
+          defaultValue="games-howell"
+          options={[
+            { label: 'Games-Howell', value: 'games-howell' },
+            { label: 'Tamhane T2', value: 'tamhane-t2' },
+            { label: 'Dunnett T3', value: 'dunnett-t3' },
+            { label: '无', value: 'none' },
+          ]}
+        />
+      ),
+    },
+    {
+      name: 'alpha',
+      label: '显著性水平',
+      component: <InputNumber defaultValue={0.05} min={0.01} max={0.1} step={0.01} style={{ width: '100%' }} />,
+    },
+  ]
+
+  return (
+    <Row gutter={16}>
+      <Col xs={24} lg={8}>
+        <AnalysisForm
+          title="Welch 方差分析"
+          fields={fields}
+          onSubmit={(values) => submitMutation.mutate(values)}
+          loading={submitMutation.isPending || polling}
+          disabled={!datasetId}
+          disabledReason="请先在顶部选择数据集"
+        />
+      </Col>
+      <Col xs={24} lg={16}>
+        <AnalysisResults result={result} />
+      </Col>
+    </Row>
+  )
+}
+
+function MultiWayAnovaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
+  const { submitMutation, result, polling } = useAnalysis(datasetId, 'anova_multi_way')
+
+  const fields = [
+    {
+      name: 'response_column',
+      label: '响应变量',
+      required: true,
+      component: <ColumnSelector columns={columns} filterType="numeric" multiple={false} placeholder="选择数值列" />,
+    },
+    {
+      name: 'factor_columns',
+      label: '因子变量',
+      required: true,
+      tooltip: '至少选择2个因子变量',
+      component: <ColumnSelector columns={columns} filterType="categorical" multiple={true} placeholder="选择分组列 (至少2个)" />,
+    },
+    {
+      name: 'include_interactions',
+      label: '包含交互效应',
+      component: <Switch defaultChecked />,
+    },
+    {
+      name: 'ss_type',
+      label: '平方和类型',
+      component: (
+        <Select
+          defaultValue="2"
+          options={[
+            { label: 'Type I', value: '1' },
+            { label: 'Type II (推荐)', value: '2' },
+            { label: 'Type III', value: '3' },
+          ]}
+        />
+      ),
+    },
+  ]
+
+  return (
+    <Row gutter={16}>
+      <Col xs={24} lg={8}>
+        <AnalysisForm
+          title="多因素方差分析"
+          fields={fields}
+          onSubmit={(values) => submitMutation.mutate(values)}
+          loading={submitMutation.isPending || polling}
+          disabled={!datasetId}
+          disabledReason="请先在顶部选择数据集"
+        />
+      </Col>
+      <Col xs={24} lg={16}>
+        <AnalysisResults result={result} />
+      </Col>
+    </Row>
+  )
+}
+
+function NonParametricTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: string }) {
+  const [selectedTest, setSelectedTest] = useState<string>('kruskal_wallis')
+  const { setRunId, result, polling, setPolling } = useAnalysisPolling()
+
+  const submitMutation = useMutation({
+    mutationFn: (params: Record<string, unknown>) => {
+      const { test: _test, ...cleanParams } = params
+      return submitAnalysis(datasetId!, selectedTest, cleanParams)
+    },
+    onSuccess: (data) => {
+      setRunId(data.run_id)
+      setPolling(true)
+      message.info('分析任务已提交')
+    },
+    onError: () => {
+      message.error('提交失败')
+    },
+  })
 
   const fields = [
     {
@@ -257,6 +295,8 @@ function NonParametricTab({ columns, datasetId }: { columns: ColumnInfo[]; datas
       required: true,
       component: (
         <Select
+          value={selectedTest}
+          onChange={setSelectedTest}
           options={[
             { label: 'Mann-Whitney U 检验', value: 'mann_whitney' },
             { label: 'Kruskal-Wallis 检验', value: 'kruskal_wallis' },
@@ -298,8 +338,18 @@ export function DifferencePage() {
     },
     {
       key: 'anova',
-      label: 'ANOVA',
+      label: '单因素方差分析 (ANOVA)',
       children: <AnovaTab columns={columns} datasetId={datasetId ?? undefined} />,
+    },
+    {
+      key: 'welch',
+      label: 'Welch 方差分析',
+      children: <WelchAnovaTab columns={columns} datasetId={datasetId ?? undefined} />,
+    },
+    {
+      key: 'multiway',
+      label: '多因素方差分析',
+      children: <MultiWayAnovaTab columns={columns} datasetId={datasetId ?? undefined} />,
     },
     {
       key: 'nonparametric',
