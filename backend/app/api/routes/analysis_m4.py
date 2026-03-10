@@ -26,7 +26,7 @@ def submit_correlation(
     return svc.submit(
         user_id=user.id,
         analysis_type="correlation",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -41,7 +41,7 @@ def submit_linear_regression(
     return svc.submit(
         user_id=user.id,
         analysis_type="regression_linear",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -56,6 +56,6 @@ def submit_glm(
     return svc.submit(
         user_id=user.id,
         analysis_type="regression_glm",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )

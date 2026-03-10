@@ -29,7 +29,7 @@ def submit_ttest(
     return svc.submit(
         user_id=user.id,
         analysis_type="t_test",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -44,7 +44,7 @@ def submit_anova_one_way(
     return svc.submit(
         user_id=user.id,
         analysis_type="anova_one_way",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -59,7 +59,7 @@ def submit_anova_multi_way(
     return svc.submit(
         user_id=user.id,
         analysis_type="anova_multi_way",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -74,7 +74,7 @@ def submit_anova_welch(
     return svc.submit(
         user_id=user.id,
         analysis_type="anova_welch",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -89,7 +89,7 @@ def submit_kruskal_wallis(
     return svc.submit(
         user_id=user.id,
         analysis_type="kruskal_wallis",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
 
@@ -104,6 +104,6 @@ def submit_mann_whitney(
     return svc.submit(
         user_id=user.id,
         analysis_type="mann_whitney",
-        params=body.model_dump(),
+        params=body.model_dump(exclude={"revision_id"}),
         revision_ids={"primary": body.revision_id},
     )
