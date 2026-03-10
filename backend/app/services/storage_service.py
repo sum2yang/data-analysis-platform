@@ -29,7 +29,13 @@ class StorageService:
             / "original"
         )
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / file.filename
+        safe_name = Path(file.filename).name if file.filename else "upload"
+        if not safe_name or safe_name.startswith("."):
+            safe_name = f"{uuid.uuid4().hex[:8]}_{safe_name or 'upload'}"
+        target_path = target_dir / safe_name
+        resolved = target_path.resolve()
+        if not str(resolved).startswith(str(target_dir.resolve())):
+            raise ValueError("Invalid filename: path traversal detected")
         with open(target_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         return target_path

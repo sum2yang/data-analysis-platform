@@ -1,31 +1,25 @@
 import { useState } from 'react'
-import { Select, message, Row, Col } from 'antd'
+import { message, Row, Col } from 'antd'
 import { useMutation } from '@tanstack/react-query'
-import { useDatasetStore } from '@/store/datasetStore'
 import { AnalysisForm } from '@/components/AnalysisForm'
 import { ResultCard } from '@/components/ResultCard'
 import { ResultTable } from '@/components/ResultTable'
 import { ColumnSelector } from '@/components/ColumnSelector'
 import { submitAnalysis, fetchAnalysisResult } from '../api'
 import { usePolling } from '@/hooks/usePolling'
+import { useDatasetColumns } from '@/hooks/useDatasetColumns'
 import { POLL_INTERVAL } from '@/config/constants'
 import type { AnalysisRunDetail } from '../types'
-import type { ColumnInfo } from '@/api/types'
 
 export function DescriptivePage() {
-  const { getCurrentDataset } = useDatasetStore()
-  const dataset = getCurrentDataset()
+  const { columns, datasetId } = useDatasetColumns()
   const [runId, setRunId] = useState<string | null>(null)
   const [result, setResult] = useState<AnalysisRunDetail | null>(null)
   const [polling, setPolling] = useState(false)
 
-  const columns: ColumnInfo[] = dataset
-    ? (dataset as unknown as { columns?: ColumnInfo[] }).columns ?? []
-    : []
-
   const submitMutation = useMutation({
     mutationFn: (params: Record<string, unknown>) =>
-      submitAnalysis(dataset!.id, 'descriptive', params),
+      submitAnalysis(datasetId!, 'descriptive', params),
     onSuccess: (data) => {
       setRunId(data.run_id)
       setPolling(true)
@@ -90,7 +84,7 @@ export function DescriptivePage() {
           fields={formFields}
           onSubmit={(values) => submitMutation.mutate(values)}
           loading={submitMutation.isPending || polling}
-          disabled={!dataset}
+          disabled={!datasetId}
           disabledReason="请先在顶部选择数据集"
         />
       </Col>

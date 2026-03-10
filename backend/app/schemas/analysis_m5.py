@@ -36,17 +36,13 @@ class NmdsRequest(BaseModel):
 
 class RdaRequest(BaseModel):
     revision_id: str
-    response_columns: list[str] = Field(min_length=2)
-    env_revision_id: str
+    species_columns: list[str] = Field(min_length=2)
     env_columns: list[str] = Field(min_length=1)
-    sample_key: str
     group_column: str | None = None
 
 
 class CcaRequest(BaseModel):
     revision_id: str
-    response_columns: list[str] = Field(min_length=2)
-    env_revision_id: str
+    species_columns: list[str] = Field(min_length=2)
     env_columns: list[str] = Field(min_length=1)
-    sample_key: str
     group_column: str | None = None

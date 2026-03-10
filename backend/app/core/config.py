@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # Celery
-    CELERY_ALWAYS_EAGER: bool = True
+    CELERY_ALWAYS_EAGER: bool = False
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
@@ -37,6 +37,21 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    def validate_jwt_secret(self) -> None:
+        import warnings
+
+        if self.JWT_SECRET_KEY == "change-me-in-production":
+            if not self.DEBUG:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set to a secure value. "
+                    "Set JWT_SECRET_KEY in .env or environment variables."
+                )
+            warnings.warn(
+                "JWT_SECRET_KEY is using default value. "
+                "Set JWT_SECRET_KEY in .env before deploying.",
+                stacklevel=2,
+            )
 
     # File storage
     UPLOAD_ROOT: Path = Path("./data/uploads")
@@ -51,6 +66,7 @@ class Settings(BaseSettings):
         return self.DATABASE_URL
 
     def ensure_dirs(self) -> None:
+        self.validate_jwt_secret()
         self.UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
         self.ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
         Path(self.DATABASE_URL.replace("sqlite:///", "")).parent.mkdir(

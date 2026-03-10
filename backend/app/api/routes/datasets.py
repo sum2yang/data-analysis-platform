@@ -168,6 +168,24 @@ def get_profile(
     return DatasetProfileResponse(**profile)
 
 
+@router.get("/{dataset_id}/columns", response_model=list[DatasetColumnResponse])
+def get_dataset_columns(
+    dataset_id: str,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    repo = DatasetRepository(db)
+    ds = repo.get_by_id(dataset_id)
+    if not ds or ds.owner_id != user.id:
+        raise NotFoundError("Dataset not found")
+    rev = repo.get_latest_revision(dataset_id)
+    if not rev:
+        return []
+    from app.models.dataset_column import DatasetColumn as DCModel
+    cols = db.query(DCModel).filter(DCModel.revision_id == rev.id).order_by(DCModel.position).all()
+    return [DatasetColumnResponse.model_validate(c) for c in cols]
+
+
 @router.get("/revisions/{revision_id}/download")
 def download_revision(
     revision_id: str,

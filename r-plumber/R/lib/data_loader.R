@@ -12,6 +12,11 @@ load_data <- function(body) {
     path <- body$manifest$path
     fmt <- tolower(body$manifest$format %||% "csv")
     if (is.null(path)) stop("manifest.path is required")
+    path <- normalizePath(path, mustWork = FALSE)
+    allowed_root <- normalizePath(Sys.getenv("DATA_ROOT", "./data"), mustWork = FALSE)
+    if (!startsWith(path, allowed_root)) {
+      stop("Access denied: manifest path outside allowed directory")
+    }
     if (!file.exists(path)) stop(paste0("File not found: ", path))
 
     df <- switch(fmt,

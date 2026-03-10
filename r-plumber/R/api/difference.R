@@ -10,6 +10,11 @@ function(req, res) {
 
     response_col <- as.character(params$response_column)
     validate_columns(df, response_col)
+    response_col <- safe_colname(response_col)
+    if (!(response_col %in% names(df))) {
+      orig <- as.character(params$response_column)
+      names(df)[names(df) == orig] <- response_col
+    }
     df[[response_col]] <- suppressWarnings(as.numeric(df[[response_col]]))
 
     mode <- tolower(params$mode %||% "independent")

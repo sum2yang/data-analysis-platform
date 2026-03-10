@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Select, InputNumber, message, Row, Col, Tabs } from 'antd'
 import { useMutation } from '@tanstack/react-query'
-import { useDatasetStore } from '@/store/datasetStore'
 import { AnalysisForm } from '@/components/AnalysisForm'
 import { ResultCard } from '@/components/ResultCard'
 import { ResultTable } from '@/components/ResultTable'
 import { ColumnSelector } from '@/components/ColumnSelector'
 import { submitAnalysis, fetchAnalysisResult } from '../api'
 import { usePolling } from '@/hooks/usePolling'
+import { useDatasetColumns } from '@/hooks/useDatasetColumns'
 import { POLL_INTERVAL } from '@/config/constants'
 import type { AnalysisRunDetail } from '../types'
 import type { ColumnInfo } from '@/api/types'
@@ -295,20 +295,16 @@ function RdaCcaTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetId?: 
 }
 
 export function OrdinationPage() {
-  const { getCurrentDataset } = useDatasetStore()
-  const dataset = getCurrentDataset()
-  const columns: ColumnInfo[] = dataset
-    ? (dataset as unknown as { columns?: ColumnInfo[] }).columns ?? []
-    : []
+  const { columns, datasetId } = useDatasetColumns()
 
   return (
     <Tabs
       defaultActiveKey="pca"
       items={[
-        { key: 'pca', label: 'PCA', children: <PcaTab columns={columns} datasetId={dataset?.id} /> },
-        { key: 'pcoa', label: 'PCoA', children: <PcoaTab columns={columns} datasetId={dataset?.id} /> },
-        { key: 'nmds', label: 'NMDS', children: <NmdsTab columns={columns} datasetId={dataset?.id} /> },
-        { key: 'rda_cca', label: 'RDA/CCA', children: <RdaCcaTab columns={columns} datasetId={dataset?.id} /> },
+        { key: 'pca', label: 'PCA', children: <PcaTab columns={columns} datasetId={datasetId ?? undefined} /> },
+        { key: 'pcoa', label: 'PCoA', children: <PcoaTab columns={columns} datasetId={datasetId ?? undefined} /> },
+        { key: 'nmds', label: 'NMDS', children: <NmdsTab columns={columns} datasetId={datasetId ?? undefined} /> },
+        { key: 'rda_cca', label: 'RDA/CCA', children: <RdaCcaTab columns={columns} datasetId={datasetId ?? undefined} /> },
       ]}
     />
   )

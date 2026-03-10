@@ -5,6 +5,7 @@ import type {
   DatasetPreview,
   DatasetProfile,
   DatasetUploadResponse,
+  DatasetColumn,
   PaginatedResponse,
 } from '@/api/types'
 import type { JoinRequest, CleanRequest, ColumnTypeUpdate } from './types'
@@ -64,5 +65,10 @@ export async function updateColumnTypes(
   const res = await apiClient.post<DatasetUploadResponse>(`/datasets/${datasetId}/columns/types`, {
     updates,
   })
+  return res.data
+}
+
+export async function fetchDatasetColumns(datasetId: string): Promise<DatasetColumn[]> {
+  const res = await apiClient.get<DatasetColumn[]>(`/datasets/${datasetId}/columns`)
   return res.data
 }

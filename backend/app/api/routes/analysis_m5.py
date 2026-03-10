@@ -25,10 +25,11 @@ def submit_pca(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
     return svc.submit(
         user_id=user.id,
         analysis_type="pca",
-        params=body.model_dump(),
+        params=params,
         revision_ids={"primary": body.revision_id},
     )
 
@@ -40,10 +41,11 @@ def submit_pcoa(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
     return svc.submit(
         user_id=user.id,
         analysis_type="pcoa",
-        params=body.model_dump(),
+        params=params,
         revision_ids={"primary": body.revision_id},
     )
 
@@ -55,10 +57,11 @@ def submit_nmds(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
     return svc.submit(
         user_id=user.id,
         analysis_type="nmds",
-        params=body.model_dump(),
+        params=params,
         revision_ids={"primary": body.revision_id},
     )
 
@@ -70,14 +73,12 @@ def submit_rda(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
     return svc.submit(
         user_id=user.id,
         analysis_type="rda",
-        params=body.model_dump(),
-        revision_ids={
-            "primary": body.revision_id,
-            "environment": body.env_revision_id,
-        },
+        params=params,
+        revision_ids={"primary": body.revision_id},
     )
 
 
@@ -88,12 +89,10 @@ def submit_cca(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
     return svc.submit(
         user_id=user.id,
         analysis_type="cca",
-        params=body.model_dump(),
-        revision_ids={
-            "primary": body.revision_id,
-            "environment": body.env_revision_id,
-        },
+        params=params,
+        revision_ids={"primary": body.revision_id},
     )

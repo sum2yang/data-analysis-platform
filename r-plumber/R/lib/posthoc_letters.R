@@ -198,6 +198,18 @@ prepare_grouped_data <- function(body) {
   group_col <- as.character(params$group_column)
   validate_columns(df, c(response_col, group_col))
 
+  # Sanitize column names for safe formula construction
+  response_safe <- safe_colname(response_col)
+  group_safe <- safe_colname(group_col)
+  if (response_safe != response_col) {
+    names(df)[names(df) == response_col] <- response_safe
+    response_col <- response_safe
+  }
+  if (group_safe != group_col) {
+    names(df)[names(df) == group_col] <- group_safe
+    group_col <- group_safe
+  }
+
   alpha <- if (is.null(params$alpha)) 0.05 else as.numeric(params$alpha)
   if (is.na(alpha) || alpha <= 0 || alpha >= 1) alpha <- 0.05
 

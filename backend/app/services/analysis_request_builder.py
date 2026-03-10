@@ -29,13 +29,16 @@ class AnalysisRequestBuilder:
         bundle: dict[str, Any] = {
             "analysis_type": analysis_type,
             "params": params,
-            "data": {},
         }
 
-        for role, csv_path in revision_paths.items():
+        roles = list(revision_paths.keys())
+
+        if len(roles) == 1:
+            # Single dataset: send data directly (no role wrapper)
+            csv_path = revision_paths[roles[0]]
             df = pd.read_csv(csv_path)
             if len(df) <= MAX_INLINE_ROWS:
-                bundle["data"][role] = df.to_dict(orient="list")
+                bundle["data"] = df.to_dict(orient="list")
             else:
                 manifest_id = str(uuid.uuid4())
                 settings = get_settings()
@@ -43,10 +46,31 @@ class AnalysisRequestBuilder:
                 manifest_dir.mkdir(parents=True, exist_ok=True)
                 manifest_path = manifest_dir / f"{manifest_id}.csv"
                 df.to_csv(manifest_path, index=False, quoting=csv.QUOTE_NONNUMERIC)
-                bundle["data"][role] = {
-                    "manifest": True,
+                bundle["manifest"] = {
                     "path": str(manifest_path),
+                    "format": "csv",
                     "rows": len(df),
                 }
+        else:
+            # Multi-dataset (e.g., RDA/CCA): merge and send as single dataframe
+            dfs = {}
+            for role, csv_path in revision_paths.items():
+                dfs[role] = pd.read_csv(csv_path)
+            bundle["data_by_role"] = {}
+            for role, df in dfs.items():
+                if len(df) <= MAX_INLINE_ROWS:
+                    bundle["data_by_role"][role] = df.to_dict(orient="list")
+                else:
+                    manifest_id = str(uuid.uuid4())
+                    settings = get_settings()
+                    manifest_dir = settings.ARTIFACT_ROOT / "manifests"
+                    manifest_dir.mkdir(parents=True, exist_ok=True)
+                    manifest_path = manifest_dir / f"{manifest_id}.csv"
+                    df.to_csv(manifest_path, index=False, quoting=csv.QUOTE_NONNUMERIC)
+                    bundle["data_by_role"][role] = {
+                        "manifest": True,
+                        "path": str(manifest_path),
+                        "rows": len(df),
+                    }
 
         return bundle

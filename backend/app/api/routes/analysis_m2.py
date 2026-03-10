@@ -19,10 +19,13 @@ def submit_descriptive(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
+    # R expects response_column (singular); iterate per column
+    params["response_column"] = params.pop("response_columns")[0]
     return svc.submit(
         user_id=user.id,
         analysis_type="descriptive",
-        params=body.model_dump(),
+        params=params,
         revision_ids={"primary": body.revision_id},
     )
 
@@ -34,9 +37,11 @@ def submit_assumptions(
     db=Depends(get_db),
 ):
     svc = AnalysisService(db)
+    params = body.model_dump(exclude={"revision_id"})
+    params["response_column"] = params.pop("response_columns")[0]
     return svc.submit(
         user_id=user.id,
         analysis_type="assumptions",
-        params=body.model_dump(),
+        params=params,
         revision_ids={"primary": body.revision_id},
     )

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 __all__ = [
@@ -10,13 +12,13 @@ __all__ = [
 class FigureExportRequest(BaseModel):
     run_id: str
     chart_index: int = 0
-    format: str = "png"  # png, svg, pdf
+    format: Literal["png", "svg", "pdf"] = "png"
 
 
 class TableExportRequest(BaseModel):
     run_id: str
     table_key: str | None = None  # specific table name, or None for all
-    format: str = "xlsx"  # csv, xlsx
+    format: Literal["csv", "xlsx"] = "xlsx"
 
 
 class ExportResponse(BaseModel):
@@ -24,6 +26,5 @@ class ExportResponse(BaseModel):
     export_type: str
     format: str
     status: str
-    file_path: str | None = None
 
     model_config = {"from_attributes": True}

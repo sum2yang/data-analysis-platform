@@ -1,6 +1,6 @@
 import { Card, Button, Space, Select, message } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { exportChart, exportTable } from './api'
 
@@ -23,6 +23,12 @@ export function ExportCenter({ runId, tableNames }: ExportCenterProps) {
   const [tableFormat, setTableFormat] = useState<'csv' | 'xlsx'>('csv')
   const [selectedTable, setSelectedTable] = useState<string | undefined>(tableNames[0])
 
+  useEffect(() => {
+    if (tableNames.length > 0 && !tableNames.includes(selectedTable ?? '')) {
+      setSelectedTable(tableNames[0])
+    }
+  }, [tableNames, selectedTable])
+
   const chartExportMutation = useMutation({
     mutationFn: () =>
       exportChart({ run_id: runId!, format: chartFormat, dpi: 300 }),
@@ -34,7 +40,10 @@ export function ExportCenter({ runId, tableNames }: ExportCenterProps) {
   })
 
   const tableExportMutation = useMutation({
-    mutationFn: () => exportTable(runId!, selectedTable!, tableFormat),
+    mutationFn: () => {
+      if (!runId || !selectedTable) throw new Error('Missing runId or table')
+      return exportTable(runId, selectedTable, tableFormat)
+    },
     onSuccess: (blob) => {
       downloadBlob(blob, `${selectedTable}.${tableFormat}`)
       message.success('表格导出成功')

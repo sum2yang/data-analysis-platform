@@ -55,3 +55,4 @@ Thumbs.db
 # Claude / Tools
 .claude/
 .ace-tool/
+backend/data/

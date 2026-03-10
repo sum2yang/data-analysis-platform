@@ -6,7 +6,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFoundError
+from app.core.errors import NotFoundError, AuthorizationError
+from app.models.dataset import Dataset
 from app.models.dataset_revision import DatasetRevision
 from app.repositories.analysis_runs import AnalysisRunRepository
 from app.schemas.analysis_run import AnalysisRunAcceptedResponse
@@ -33,6 +34,9 @@ class AnalysisService:
             rev = self.db.query(DatasetRevision).filter(DatasetRevision.id == rev_id).first()
             if not rev:
                 raise NotFoundError(f"Revision not found: {rev_id}")
+            dataset = self.db.query(Dataset).filter(Dataset.id == rev.dataset_id).first()
+            if not dataset or dataset.owner_id != user_id:
+                raise AuthorizationError("You do not have access to this dataset")
 
         run = self.run_repo.create(
             user_id=user_id,
@@ -46,6 +50,11 @@ class AnalysisService:
             rev = self.db.query(DatasetRevision).filter(DatasetRevision.id == rev_id).first()
             revision_paths[role] = rev.storage_path
 
+        # Set status to queued BEFORE dispatching task to avoid
+        # race condition in eager mode where task completes inline
+        self.run_repo.update_status(run.id, "queued")
+        self.db.commit()
+
         from app.tasks.analysis_tasks import run_analysis_task
 
         task = run_analysis_task.delay(
@@ -55,11 +64,17 @@ class AnalysisService:
             revision_paths=revision_paths,
         )
 
-        self.run_repo.update_status(run.id, "queued", celery_task_id=str(task.id) if task else None)
+        # Only update celery_task_id if task hasn't already finished (eager mode)
+        current_run = self.run_repo.get_by_id(run.id)
+        if current_run and current_run.status == "queued":
+            self.run_repo.update_status(
+                run.id, "queued",
+                celery_task_id=str(task.id) if task else None,
+            )
 
         return AnalysisRunAcceptedResponse(
             run_id=run.id,
-            status="queued",
+            status=current_run.status if current_run else "queued",
             analysis_type=analysis_type,
         )
 

@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Tabs, Select, Input, InputNumber, Switch, message, Row, Col } from 'antd'
+import { Tabs, Select, InputNumber, Switch, message, Row, Col } from 'antd'
 import { useMutation } from '@tanstack/react-query'
-import { useDatasetStore } from '@/store/datasetStore'
 import { AnalysisForm } from '@/components/AnalysisForm'
 import { ResultCard } from '@/components/ResultCard'
 import { ResultTable } from '@/components/ResultTable'
 import { ColumnSelector } from '@/components/ColumnSelector'
 import { submitAnalysis, fetchAnalysisResult } from '../api'
 import { usePolling } from '@/hooks/usePolling'
+import { useDatasetColumns } from '@/hooks/useDatasetColumns'
 import { POLL_INTERVAL } from '@/config/constants'
 import type { AnalysisRunDetail } from '../types'
 import type { ColumnInfo } from '@/api/types'
@@ -288,28 +288,23 @@ function NonParametricTab({ columns, datasetId }: { columns: ColumnInfo[]; datas
 }
 
 export function DifferencePage() {
-  const { getCurrentDataset } = useDatasetStore()
-  const dataset = getCurrentDataset()
-
-  const columns: ColumnInfo[] = dataset
-    ? (dataset as unknown as { columns?: ColumnInfo[] }).columns ?? []
-    : []
+  const { columns, datasetId } = useDatasetColumns()
 
   const tabItems = [
     {
       key: 'ttest',
       label: 't 检验',
-      children: <TTestTab columns={columns} datasetId={dataset?.id} />,
+      children: <TTestTab columns={columns} datasetId={datasetId ?? undefined} />,
     },
     {
       key: 'anova',
       label: 'ANOVA',
-      children: <AnovaTab columns={columns} datasetId={dataset?.id} />,
+      children: <AnovaTab columns={columns} datasetId={datasetId ?? undefined} />,
     },
     {
       key: 'nonparametric',
       label: '非参数检验',
-      children: <NonParametricTab columns={columns} datasetId={dataset?.id} />,
+      children: <NonParametricTab columns={columns} datasetId={datasetId ?? undefined} />,
     },
   ]
 

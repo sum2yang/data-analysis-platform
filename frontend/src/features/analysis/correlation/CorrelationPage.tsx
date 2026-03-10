@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Select, message, Row, Col, Tabs } from 'antd'
 import { useMutation } from '@tanstack/react-query'
-import { useDatasetStore } from '@/store/datasetStore'
+import { useDatasetColumns } from '@/hooks/useDatasetColumns'
 import { AnalysisForm } from '@/components/AnalysisForm'
 import { ResultCard } from '@/components/ResultCard'
 import { ResultTable } from '@/components/ResultTable'
@@ -201,11 +201,7 @@ function RegressionTab({ columns, datasetId }: { columns: ColumnInfo[]; datasetI
 }
 
 export function CorrelationPage() {
-  const { getCurrentDataset } = useDatasetStore()
-  const dataset = getCurrentDataset()
-  const columns: ColumnInfo[] = dataset
-    ? (dataset as unknown as { columns?: ColumnInfo[] }).columns ?? []
-    : []
+  const { columns, datasetId } = useDatasetColumns()
 
   return (
     <Tabs
@@ -214,12 +210,12 @@ export function CorrelationPage() {
         {
           key: 'correlation',
           label: '相关分析',
-          children: <CorrelationTab columns={columns} datasetId={dataset?.id} />,
+          children: <CorrelationTab columns={columns} datasetId={datasetId ?? undefined} />,
         },
         {
           key: 'regression',
           label: '回归分析',
-          children: <RegressionTab columns={columns} datasetId={dataset?.id} />,
+          children: <RegressionTab columns={columns} datasetId={datasetId ?? undefined} />,
         },
       ]}
     />
