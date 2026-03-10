@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Storage (user uploads, artifacts)
+storage/
+
+# Node.js
+node_modules/
+frontend/dist/
+.vite/
+
+# R
+renv/library/
+renv/staging/
+renv/cellar/
+.Rhistory
+.RData
+.Rproj.user
+
+# Fonts (binary)
+backend/assets/fonts/*.otf
+backend/assets/fonts/*.ttf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude / Tools
+.claude/
+.ace-tool/
